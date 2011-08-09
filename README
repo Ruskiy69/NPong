@@ -1,0 +1,46 @@
+****************************************************
+*                                                  *
+*              NPong (Networked Pong)              *
+*                                                  *
+****************************************************
+*                  Created by:                     *
+*               George Kudrayvtsev                 *
+*                                                  *
+*                 Designed For:                    *
+*                    Windows                       *
+*                                                  *
+*                    Version:                      *
+*                  1.0.0 BETA                      *
+*                                                  *
+*                   Description:                   *
+*   The classic arcade game of pong, with an       *
+*   absolutely unbeatable AI, and the ability      *
+*   to play against another human on your network. *
+*                                                  *
+****************************************************
+
+INSTALLATION INSTRUCTIONS:
+
+1. Run vcredist_x86.exe and install.
+2. Run NPong.exe and have fun :)
+
+
+Source code available in the "Source" folder.
+
+If you are experiencing problems, please send an e-mail
+to me, George, at gkudrayvtsev@yahoo.com and I will get
+back to you ASAP.
+
+
+CONTROLS:
+
+    - W / UP ARROW          Move paddle up
+    - S / DOWN ARROW        Move paddle down
+    
+KNOWN BUGS:
+
+    - When hosting a server and waiting for someone
+      to join, the window glitches and says (Not Responding)
+      in the title bar. This is because the game is focused
+      on finding you an opponent. There is no safe way to 
+      quit during this time.
