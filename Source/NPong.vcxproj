@@ -11,7 +11,7 @@
     </ProjectConfiguration>
   </ItemGroup>
   <PropertyGroup Label="Globals">
-    <ProjectGuid>{2929741F-6BEB-4A98-939C-E0FE45DD60B6}</ProjectGuid>
+    <ProjectGuid>{F3FD3E35-6559-4E61-9A4C-B794F3925BCC}</ProjectGuid>
     <Keyword>Win32Proj</Keyword>
     <RootNamespace>NPong</RootNamespace>
   </PropertyGroup>
@@ -39,12 +39,12 @@
   <PropertyGroup Label="UserMacros" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <LinkIncremental>true</LinkIncremental>
-    <IncludePath>$(VCInstallDir)include;$(VCInstallDir)atlmfc\include;$(WindowsSdkDir)include;$(FrameworkSDKDir)\include;C:\SDL\include;</IncludePath>
+    <IncludePath>$(VCInstallDir)include;$(VCInstallDir)atlmfc\include;$(WindowsSdkDir)include;$(FrameworkSDKDir)\include;C:\SDL\include\;</IncludePath>
     <LibraryPath>$(VCInstallDir)lib;$(VCInstallDir)atlmfc\lib;$(WindowsSdkDir)lib;$(FrameworkSDKDir)\lib;C:\SDL\lib;</LibraryPath>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
     <LinkIncremental>false</LinkIncremental>
-    <IncludePath>$(VCInstallDir)include;$(VCInstallDir)atlmfc\include;$(WindowsSdkDir)include;$(FrameworkSDKDir)\include;C:\SDL\include;</IncludePath>
+    <IncludePath>$(VCInstallDir)include;$(VCInstallDir)atlmfc\include;$(WindowsSdkDir)include;$(FrameworkSDKDir)\include;C:\SDL\include\;</IncludePath>
     <LibraryPath>$(VCInstallDir)lib;$(VCInstallDir)atlmfc\lib;$(WindowsSdkDir)lib;$(FrameworkSDKDir)\lib;C:\SDL\lib;</LibraryPath>
   </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
@@ -56,7 +56,7 @@
       <PreprocessorDefinitions>WIN32;_DEBUG;_WINDOWS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
     </ClCompile>
     <Link>
-      <SubSystem>Windows</SubSystem>
+      <SubSystem>Console</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
     </Link>
   </ItemDefinitionGroup>
@@ -85,6 +85,7 @@
     <ClInclude Include="Events.h" />
     <ClInclude Include="Logging.h" />
     <ClInclude Include="MenuCreation.h" />
+    <ClInclude Include="resource.h" />
     <ClInclude Include="SDL_Functions.h" />
     <ClInclude Include="Socket.h" />
     <ClInclude Include="Timer.h" />
@@ -96,11 +97,17 @@
     <ClCompile Include="Errors.cpp" />
     <ClCompile Include="Events.cpp" />
     <ClCompile Include="Logging.cpp" />
-    <ClCompile Include="Main.cpp" />
+    <ClCompile Include="NPong.cpp" />
     <ClCompile Include="MenuCreation.cpp" />
     <ClCompile Include="SDL_Functions.cpp" />
     <ClCompile Include="Socket.cpp" />
     <ClCompile Include="Timer.cpp" />
+  </ItemGroup>
+  <ItemGroup>
+    <ResourceCompile Include="NPong.rc" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="icon.ico" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

@@ -146,6 +146,7 @@ public:
         Server-side functions
     */
     int   accept();
+    int   nonBlockAccept();
     void  bind(const char* host = LOCALHOST, const char* port = DEFAULT_PORT);
     void  listen(const int backlog = 5);
 

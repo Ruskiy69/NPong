@@ -18,5 +18,7 @@ void Timer::start()
 
 int Timer::getTicks()
 {
-    return SDL_GetTicks() - this->ticks;
+    Uint32 oldTicks = this->ticks;
+    this->ticks = SDL_GetTicks();
+    return this->ticks - oldTicks;
 }

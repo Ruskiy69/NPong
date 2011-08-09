@@ -89,7 +89,7 @@
 #define SCREEN_WIDTH    800
 #define SCREEN_HEIGHT   600
 #define SCREEN_BPP      32
-#define SCREEN_FLAGS    SDL_HWSURFACE | SDL_DOUBLEBUF
+#define SCREEN_FLAGS    SDL_SWSURFACE | SDL_FULLSCREEN
 
 // Libraries to initialize
 #define INIT_PNG_LIB    true
@@ -99,9 +99,6 @@
 
 // Change these to customize what gets initialized in SDL
 #define INITIALIZATION_FLAGS SDL_INIT_VIDEO | SDL_INIT_TIMER | SDL_INIT_AUDIO
-
-// The location of your applications icon
-#define ICON            NULL
 
 // For ease in blitting to the screen, but
 // you must have a Display* class named
@@ -114,6 +111,9 @@
 #else
 #define FN_SLASH        "/"
 #endif // _WIN32
+
+// The location of your applications icon
+#define ICON            "Data"FN_SLASH"NPong.png"
 
 class Display
 {

@@ -10,7 +10,7 @@
 *                    Windows                       *
 *                                                  *
 *                    Version:                      *
-*                  1.0.0 BETA                      *
+*                  0.9.1 BETA                      *
 *                                                  *
 *                   Description:                   *
 *   The classic arcade game of pong, with an       *
@@ -22,7 +22,7 @@
 INSTALLATION INSTRUCTIONS:
 
 1. Run vcredist_x86.exe and install.
-2. Run NPong.exe and have fun :)
+2. Run NPong.exe in the "Game" folder and have fun :)
 
 
 Source code available in the "Source" folder.
@@ -39,8 +39,5 @@ CONTROLS:
     
 KNOWN BUGS:
 
-    - When hosting a server and waiting for someone
-      to join, the window glitches and says (Not Responding)
-      in the title bar. This is because the game is focused
-      on finding you an opponent. There is no safe way to 
-      quit during this time.
+    - If you join a multiplayer game, and the host quits,
+      the game will freeze and crash.

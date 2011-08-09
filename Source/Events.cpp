@@ -12,6 +12,14 @@ void Events::handleMenuEvents(bool* quit, int* mouseX, int* mouseY,
         case SDL_QUIT:
             *quit = true;
             return;
+        case SDL_KEYDOWN:
+            if(this->event.key.keysym.sym == SDLK_ESCAPE ||
+                this->event.key.keysym.sym == SDLK_q)
+            {
+                *quit = true;
+                return;
+            }
+            break;
         case SDL_MOUSEBUTTONDOWN:
             if(this->event.button.button == SDL_BUTTON_LEFT)
             {
@@ -86,5 +94,13 @@ void Events::handleQuit(bool* quit)
     {
         if(event.type == SDL_QUIT)
             *quit = true;
+        if(event.type == SDL_KEYDOWN)
+            if(this->event.key.keysym.sym == SDLK_ESCAPE ||
+                this->event.key.keysym.sym == SDLK_q)
+            {
+                *quit = true;
+                return;
+            }
+            break;
     }
 }

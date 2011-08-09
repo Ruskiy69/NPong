@@ -42,8 +42,9 @@ void Log::log(const char* message, LOG_LEVEL level)
     time(&this->timer);
     string now = ctime(&this->timer);
 
-    // Remove a newline (\n) if found in the string.
-    now = now.substr(0, now.find("\n") == string::npos ? -1 : now.find("\n"));
+    // Remove a newline (\n) if found at the end of the string.
+    if(now.find('\n') == now.length() - 1)
+        now = now.erase(now.length() - 2);
 
     // Based on the log level, record the appropriate message.
     switch(level)

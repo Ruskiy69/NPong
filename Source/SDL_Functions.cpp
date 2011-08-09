@@ -33,14 +33,14 @@ SDL_Surface* createSurface(const int w, const int h)
 
 SDL_Surface* createAlphaSurface(const int w, const int h)
 {
-    return SDL_CreateRGBSurface(SDL_HWSURFACE | SDL_SRCCOLORKEY | SDL_SRCALPHA | SDL_RLEACCEL,
+    return SDL_CreateRGBSurface(DEFAULT_FLAGS | SDL_SRCALPHA | SDL_RLEACCEL,
                 w, h, DEFAULT_DEPTH, rmask, gmask, bmask, amask);
 }
 
 SDL_Surface* createAlphaSurface(const int w, const int h, SDL_Color color)
 {
-    SDL_Surface* final = createSurface(w, h, color, SDL_HWSURFACE |
-                SDL_SRCCOLORKEY | SDL_SRCALPHA | SDL_RLEACCEL);
+    SDL_Surface* final = createSurface(w, h, color, DEFAULT_FLAGS 
+        | SDL_SRCALPHA | SDL_RLEACCEL);
     fillSurface(final, color);
     return final;
 }

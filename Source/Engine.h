@@ -64,8 +64,6 @@ private:
     /* The game menus */
     Menu*       mainMenu;
     Menu*       mpMenu;
-    Menu*       mpMenu_host;
-    Menu*       mpMenu_join;
 
     /* The objects */
     Entity*     p1;

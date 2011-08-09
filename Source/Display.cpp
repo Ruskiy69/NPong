@@ -74,7 +74,7 @@ Display::Display()
         handleError(SDL_GetError());
     }
 
-    this->background = SDL_CreateRGBSurface(SDL_HWSURFACE, SCREEN_WIDTH, SCREEN_HEIGHT, SCREEN_BPP, WHITE, 0);
+    this->background = SDL_CreateRGBSurface(SDL_SWSURFACE, SCREEN_WIDTH, SCREEN_HEIGHT, SCREEN_BPP, WHITE, 0);
     SDL_FillRect(this->background, NULL, 0x000000);
 }
 

@@ -27,8 +27,6 @@ Engine::Engine()
 
     this->mainMenu      = new Menu(this->display, this->eventHandler);
     this->mpMenu        = new Menu(this->display, this->eventHandler);
-    this->mpMenu_host   = new Menu(this->display, this->eventHandler);
-    this->mpMenu_join   = new Menu(this->display, this->eventHandler);
 
     this->ball          ->setEntity(this->display->loadAlphaImage("Data"FN_SLASH"Ball.png"));
 	this->ball          ->setCollisionBox(SCREEN_WIDTH / 2, SCREEN_HEIGHT / 2, 9, 9);
@@ -47,7 +45,9 @@ Engine::Engine()
 
     this->fps->setFrameRate(FPS);
 
+#ifdef DEBUG
     LOG("Constructor complete", DEBUG);
+#endif // DEBUG
 }
 
 Engine::~Engine()
@@ -62,14 +62,15 @@ Engine::~Engine()
 
     delete this->mainMenu;
     delete this->mpMenu;
-    delete this->mpMenu_host;
-    delete this->mpMenu_join;
 
     TTF_CloseFont(this->score_font);
 
     SDL_FreeSurface(this->bg);
 
+#ifdef DEBUG
     LOG("Destructor complete", DEBUG);
+#endif // DEBUG
+
     LOG("Game over!", INFO);
 
     logger << "The final score was " << this->p1_score << " to " << this->p2_score;
@@ -85,7 +86,10 @@ void Engine::menu()
     /* The menu font */
     TTF_Font* menu_font = TTF_OpenFont("Data"FN_SLASH"MainFont.ttf", 24);
 
+#ifdef DEBUG
     LOG("Creating menus...", DEBUG);
+#endif // DEBUG
+
     /* Set up the menus, giving them a
      * -font
      * -background image
@@ -101,6 +105,11 @@ void Engine::menu()
     this->mainMenu->setStartCoordinates(SCREEN_WIDTH / 2, 100);
     this->mainMenu->setCenterText(true);
 
+    /* A new menu for multiplayer so the user can
+     * choose whether they would like to host a server
+     * or join a game.
+     */
+
     this->mpMenu->setBackground(createSurface(
         SCREEN_WIDTH, SCREEN_HEIGHT, createColor(BLACK)));
     this->mpMenu->setFont(menu_font);
@@ -109,25 +118,33 @@ void Engine::menu()
     this->mpMenu->setStartCoordinates(SCREEN_WIDTH / 2, 100);
     this->mpMenu->setCenterText(true);
 
-    this->mpMenu_host->setBackground(createSurface(
-        SCREEN_WIDTH, SCREEN_HEIGHT, createColor(BLACK)));
-    this->mpMenu_host->setFont(menu_font);
-    this->mpMenu_host->setTextColor(WHITE);
-    this->mpMenu_host->setHighLightColor(GREEN);
-    this->mpMenu_host->setStartCoordinates(SCREEN_WIDTH / 2, 100);
-    this->mpMenu_host->setCenterText(true);
+    /* The second arg is irrelevant here */
+    this->mpMenu->newText("PONG!\n \nCreated By George Kudrayvtsev\n ");
+    this->mpMenu->newActionOption("Host a Game", PLAY_GAME);
+    this->mpMenu->newActionOption("Join a Game", PLAY_MULTI_GAME);
+    this->mpMenu->newActionOption("Return", RETURN_TO_LAST);  // Except in this one
 
-    this->mpMenu_join->setBackground(createSurface(
+    /* A menu with the controls to help out the user.
+     * It has only one option, to return.
+     */
+    Menu* instructions = new Menu(this->display, this->eventHandler);
+    instructions->setBackground(createSurface(
         SCREEN_WIDTH, SCREEN_HEIGHT, createColor(BLACK)));
-    this->mpMenu_join->setFont(menu_font);
-    this->mpMenu_join->setTextColor(WHITE);
-    this->mpMenu_join->setHighLightColor(GREEN);
-    this->mpMenu_join->setStartCoordinates(SCREEN_WIDTH / 2, 100);
-    this->mpMenu_join->setCenterText(true);
+    instructions->setFont(menu_font);
+    instructions->setTextColor(WHITE);
+    instructions->setHighLightColor(GREEN);
+    instructions->setStartCoordinates(SCREEN_WIDTH / 2, 100);
+    instructions->setCenterText(true);
 
-    this->mainMenu->newText("PONG!\n \n \nCreated By George Kudrayvtsev\n ");
+    instructions->newText("PONG!\n \nCreated By George Kudrayvtsev");
+    instructions->newText("\nCONTROLS:\nUp Arrow: Move paddle up\nDown Arrow: Move paddle down\nEscape: Quit Game\n ");
+    instructions->newActionOption("Return", RETURN_TO_LAST);
+
+    /* Add all of the main menu options */
+    this->mainMenu->newText("PONG!\n \nCreated By George Kudrayvtsev\n ");
     this->mainMenu->newActionOption("Singleplayer Game", PLAY_GAME);
     this->mainMenu->newActionOption("Multiplayer Game", PLAY_MULTI_GAME);
+    this->mainMenu->newSubMenu("Controls", instructions);
     this->mainMenu->newActionOption("Quit", QUIT_GAME);
 
     /* Run the menu, checking for a return value */
@@ -152,8 +169,8 @@ void Engine::playGame()
     int p1_dy   = 0;
     int p2_dy   = 0;
 
-    int ball_dx = 5;
-    int ball_dy = -5;
+    int ball_dx = 8;
+    int ball_dy = -8;
     
     /* Handling the score */
     stringstream score_ss;
@@ -163,10 +180,13 @@ void Engine::playGame()
         score_ss.str(), createColor(RED), createColor(WHITE),
         CREATE_SURFACE | ALIGN_CENTER | TRANSPARENT_BG);
 
+    /* We want to update AI move every 10 frames */
+    int frame = 0;
+
     while(!quit)
     {
-        /* Monitor frame rate */
-        this->fps->start();
+        /* If frame is greater than 10, make it 0, otherwise increment by 1 */
+        frame > 10 ? frame = 0 : frame++;
 
         /* Handle user interaction */
         this->eventHandler->handleGameEvents(&quit, &p1_dy);
@@ -182,7 +202,8 @@ void Engine::playGame()
             CREATE_SURFACE | ALIGN_CENTER | TRANSPARENT_BG);
 
         /* Get the AI path */
-        this->calcMove(&p2_dy, ball_dx, ball_dy);
+        if(frame % 10 == 0)
+            this->calcMove(&p2_dy, ball_dx, ball_dy);
 
         /* Move both paddles */
         this->p1->move(this->p1->getX(), this->p1->getY() + p1_dy);
@@ -192,12 +213,12 @@ void Engine::playGame()
 		if(this->p2->getY() + PONG_HEIGHT >= SCREEN_HEIGHT)
 		{
 			p2_dy = 0;
-			this->p2->move(this->p2->getX(), this->p2->getY() - p2_dy);
+			this->p2->move(this->p2->getX(), SCREEN_HEIGHT - PONG_HEIGHT - 1);
 		}
 		else if(this->p2->getY() <= 0)
 		{
 			p2_dy = 0;
-			this->p2->move(this->p2->getX(), this->p2->getY() + p2_dy);
+			this->p2->move(this->p2->getX(), 1);
 		}
 
 		if(this->p1->getY() + PONG_HEIGHT >= SCREEN_HEIGHT)
@@ -235,11 +256,28 @@ void Engine::playGame()
 		{
 			srand((unsigned int)time(NULL));
 
-			ball_dx = -5;
-			ball_dy = (rand() % 5) - 1;
+            int pos_neg = rand() % 1;
 
-			if(ball_dy == 0)
-				ball_dy += 1 + rand() % 5;
+            if(pos_neg == 1)
+            {
+                ball_dx = -(rand() % 8 + 8);
+            }
+            else
+            {
+                ball_dx = (rand() % 8 + 8);
+            }
+
+            pos_neg = rand() % 1;
+
+
+            if(pos_neg == 1)
+            {
+                ball_dy = -(rand() % 8 + 8);
+            }
+            else
+            {
+                ball_dy = (rand() % 8 + 8);
+            }
 
             this->ball->move(SCREEN_HEIGHT / 2 - 5, SCREEN_WIDTH / 2 - 5);
 		}
@@ -277,29 +315,12 @@ void Engine::playGame()
 
 void Engine::setupMulti()
 {
+#ifdef DEBUG
     LOG("Host or Join?", DEBUG);
+#endif // DEBUG
 
-    /* A new menu for multiplayer so the user can
-     * choose whether they would like to host a server
-     * or join a game.
-     */
-    Menu* choice = new Menu(this->display, this->eventHandler);
-
-    /* The basic options, remain consistent with old menus */
-    choice->setBackground(createSurface(
-        SCREEN_WIDTH, SCREEN_HEIGHT, createColor(BLACK)));
-    choice->setFont(TTF_OpenFont("Data"FN_SLASH"MainFont.ttf", 24));
-    choice->setTextColor(WHITE);
-    choice->setHighLightColor(GREEN);
-    choice->setCenterText(true);
-    choice->setStartCoordinates(SCREEN_WIDTH / 2, 250);
-    
-    /* The second arg is irrelevant here */
-    choice->newActionOption("Host a Game", PLAY_GAME);
-    choice->newActionOption("Join a Game", PLAY_MULTI_GAME);
-    choice->newActionOption("Return", RETURN_TO_LAST);  // Except in this one
-
-    int retval = choice->run();
+    /* Run the multiplayer menu */
+    int retval = this->mpMenu->run();
 
     if(retval == 1) // Return to previous (main) menu
         this->menu();
@@ -311,40 +332,79 @@ void Engine::setupMulti()
          * The host controls ball movement and the
          * score, the client only controls his or
          * her own paddle.
-         * TODO: Fix bug in accept() blocking.
          */
+#ifdef DEBUG
         LOG("Host", DEBUG);
+#endif // DEBUG
 
         this->isHost = true;
         this->peer = new Socket(AF_INET, SOCK_STREAM, TCP_SERVER);
         this->peer->bind("", DEF_PONG_PORT);
         this->peer->listen(1);
         
+        /* To handle exiting */
+        bool quit = false;
+
         /* So the user knows what's going on */
         SDL_Surface* status = renderMultiLineText(
             this->score_font, "Awaiting an opponent...",
             createColor(BLACK), createColor(WHITE), 
             CREATE_SURFACE | ALIGN_CENTER);
 
-        /* Update the images and text on the screen */
-        BLIT(this->bg, 0, 0);
-        BLIT(status, SCREEN_WIDTH / 2 - status->clip_rect.w / 2, 100);
-        this->display->update();
-
-        /* Await a connection.
-         * BUG: The window will appear to be unresponsive,
-         * but it's actually just focused on accepting a 
-         * connection. There's no way to safely exit.
-         */
-        int opponent = this->peer->accept();
-
-        if(strncmp(this->peer->recv(), "CONNECT\n", 8) == 0)
+        while(!quit)
         {
-            /* Just show the user that someone is
-             * ready to play.
-             * TODO: Add a confirmation message so incase
-             * user is AFK they can be informed.
+            this->eventHandler->handleQuit(&quit);
+
+            /* Update the images and text on the screen */
+            BLIT(this->bg, 0, 0);
+            BLIT(status, SCREEN_WIDTH / 2 - status->clip_rect.w / 2, 100);
+            this->display->update();
+
+            /* Await a connection. It is non-blocking so the
+             * user can now safely exit.
              */
+            int opponent = this->peer->nonBlockAccept();
+
+            if(opponent != -1)
+            {
+                break;
+            }
+
+            /* Lower CPU usage */
+            SDL_Delay(10);
+        }
+
+        if(!quit)
+        {
+#ifdef DEBUG
+            /* Log the socket file descriptor so it's not an error */
+            logger << "Socket FD: " << this->peer->getClientSock();
+            LOG(logger.str(), DEBUG);
+            logger.str(string());
+#endif // DEBUG
+
+            /* Get the confirmation of connection message from the opponent */
+            char* msg = NULL;
+            do
+            {
+                msg = this->peer->recv();
+#ifdef DEBUG
+                LOG(msg, DEBUG);
+#endif // DEBUG
+
+            }
+            while(strncmp(msg, "CONNECT\n", 8) != 0);
+
+            /* Just show the user that someone is
+                * ready to play.
+                * TODO: Add a confirmation message so incase
+                * user is AFK they can be informed.
+                */
+
+#ifdef DEBUG
+            LOG("Peer sent \"CONNECT\\n\" message!", DEBUG);
+#endif // DEBUG
+
             SDL_FreeSurface(status);
             status = renderMultiLineText(
                 this->score_font, "Starting match...",
@@ -361,6 +421,7 @@ void Engine::setupMulti()
             /* We have received a connect message, so we can now play. */
             this->playMultiGame();
         }
+
     }
     else if(retval == 2)    // Join
     {
@@ -370,8 +431,10 @@ void Engine::setupMulti()
          * and buggy in the case that it really does work.
          * TODO: Test NPong over the Internet.
          */
+#ifdef DEBUG
         LOG("Join", DEBUG);
         LOG("Prompting for IP...", DEBUG);
+#endif // DEBUG
 
         /* We want to join, not host */
         this->isHost = false;
@@ -439,6 +502,9 @@ void Engine::setupMulti()
 
             /* Update everything for the user to see */
             this->display->update();
+
+            /* Lower CPU usage */
+            SDL_Delay(100);
         }
 
         /* Unicode isn't needed anymore */
@@ -452,16 +518,18 @@ void Engine::setupMulti()
          */
         if(ip != "" && !quit)
         {
-            LOG(ip, DEBUG);
+#ifdef DEBUG
+            logger << "The IP address is: " << ip;
+            LOG(logger.str(), DEBUG);
+            logger.str(string());
+#endif // DEBUG
+
             this->peer = new Socket(AF_INET, SOCK_STREAM);
             this->peer->connect(ip.c_str(), DEF_PONG_PORT);
             this->peer->sendall("CONNECT\n");
             this->playMultiGame();
         }
     }
-
-    /* Free memory :) */
-    delete choice;
 }
 
 void Engine::playMultiGame()
@@ -490,9 +558,6 @@ void Engine::playMultiGame()
 
     while(!quit)
     {
-        /* Monitor frame rate */
-        this->fps->start();
-
         /* Handle user interaction */
         this->eventHandler->handleGameEvents(&quit, &p1_dy);
         
@@ -630,6 +695,7 @@ void Engine::sendPosition()
 
     ss << "\n";
     
+#ifdef DEBUG
     /* Do some logging for debug purposes */
     logger << "Sent " << sizeof ss.str() << " bytes.";
     LOG(logger.str(), DEBUG);
@@ -637,6 +703,7 @@ void Engine::sendPosition()
     logger << "Sending coordinates: " << ss.str();
     LOG(logger.str(), DEBUG);
     logger.str(string());
+#endif // DEBUG
 
     /* Send the complete message, in the format
      * X:x-coorY:y-coorP1SCORE:player1-score:P2SCORE:player2-scoreBALLX:ball-xBALLY:ball-y\n
@@ -653,10 +720,17 @@ void Engine::recvPosition(int* y)
     if(msg.empty())
         return;
 
+    /* Corrupt data? */
+    if(msg.find("X:") == string::npos || 
+        msg.find("X:") == -1)
+        return;
+
+#ifdef DEBUG
     /* Logging to debug easily */
     logger << "Received data from peer: " << msg;
     LOG(logger.str(), DEBUG);
     logger.str(string());
+#endif // DEBUG
 
     /* All variables to parse:
      * paddle_x, paddle_y, ball_x,
@@ -675,7 +749,7 @@ void Engine::recvPosition(int* y)
         p1sc= atoi(msg.substr(msg.find("P1SCORE:") + 8, msg.find("P2SCORE:")).c_str());
         p2sc= atoi(msg.substr(msg.find("P2SCORE:") + 8, msg.find("BALLX:")).c_str());
         bx  = atoi(msg.substr(msg.find("BALLX:") + 6, msg.find("BALLY:")).c_str());
-        by  = atoi(msg.substr(msg.find("BALLY:") + 6, -1).c_str());
+        by  = atoi(msg.substr(msg.find("BALLY:") + 6, msg.find("\n")).c_str());
         this->ball->move(bx, by);
 
         this->p1_score = p1sc;
@@ -691,9 +765,25 @@ void Engine::delayFps()
     /* Calculate frame rate and how much to pause in order
      * to keep a constant frame rate.
      */
+#ifdef DEBUG
+    logger << "Ticks: " << this->fps->getTicks();
+    logger << " FPS: " << this->fps->FRAME_RATE;
+    logger << " Calc: " << 1000 / this->fps->FRAME_RATE;
+    LOG(logger.str(), DEBUG);
+    logger.str(string());
+#endif // DEBUG
+
     if(((unsigned)this->fps->getTicks() < 1000 / this->fps->FRAME_RATE))
     {
-        SDL_Delay((1000 / this->fps->FRAME_RATE) - this->fps->getTicks());
+        int delay = (1000 / this->fps->FRAME_RATE) - this->fps->getTicks();
+        
+#ifdef DEBUG
+        logger << "Delaying for " << delay << "ms";
+        LOG(logger.str(), DEBUG);
+        logger.str(string());
+#endif // DEBUG
+
+        SDL_Delay(delay);
     }
 }
 
@@ -713,21 +803,25 @@ void Engine::calcMove(int* ai_dy, const int dx, const int dy)
 
 	int impact_y      = y + (dy*((SCREEN_WIDTH - x) / dx));
 
-    /* If impact is outside of the visible screen, its
-     * absolute value must be taken to calculate position.
+    /* We need to estimate impact so a temporary 
+     * variable is necessary.
      */
 	int tmp           = abs(impact_y);
 
+#ifdef DEBUG
     /* Log to debug and inform */
-    LOG("Calculating AI for maximum effectiveness...", INFO);
     logger << "Estimated impact: " << impact_y;
     LOG(logger.str(), DEBUG);
     logger.str(string());
+#endif // DEBUG
 
+    /* If the ball is going away from the AI paddle,
+     * we need to move back toward the middle for
+     * maximum effectiveness on the next turn.
+     */
 	if(dx < 0)  // Going to the left
 	{
-		// Return back to middle-ish area
-		if(this->p2->getY() < SCREEN_HEIGHT / 2)
+		if(this->p2->getY() < SCREEN_HEIGHT / 2)    // Above the middle
 		{
 			if(this->p2->getY() + 40 >= SCREEN_HEIGHT / 2 && this->p2->getY() <= SCREEN_HEIGHT / 2)
 			{
@@ -737,7 +831,7 @@ void Engine::calcMove(int* ai_dy, const int dx, const int dy)
 			else
 				*ai_dy = 5;
 		}
-		else if(this->p2->getY() > SCREEN_HEIGHT / 2)
+		else if(this->p2->getY() > SCREEN_HEIGHT / 2)   // Below the middle
 		{
 			if(this->p2->getY() - 40 <= SCREEN_HEIGHT / 2 && this->p2->getY() >= SCREEN_HEIGHT / 2)
 			{
@@ -747,12 +841,17 @@ void Engine::calcMove(int* ai_dy, const int dx, const int dy)
 			else
 				*ai_dy = -5;
 		}
-		else
+		else    // Exactly at the middle
 			*ai_dy = 0;
 
 		return;
 	}
 
+    /* Here we estimate the position necessary
+     * for the ball to hit the paddle in the 
+     * middle. The seemingly arbitrary "40" in
+     * there is actually the height of the paddle.
+     */
 	if(dy < 0) // Going up
 	{
 		int min = this->p2->getY();
@@ -774,6 +873,7 @@ void Engine::calcMove(int* ai_dy, const int dx, const int dy)
 		}
 	}
 
+    /* If the impact is outside of the screen border */
 	if(impact_y > SCREEN_HEIGHT)
 	{
 		impact_y = SCREEN_HEIGHT - (impact_y - SCREEN_HEIGHT);
@@ -783,6 +883,11 @@ void Engine::calcMove(int* ai_dy, const int dx, const int dy)
 		impact_y = 0 - impact_y;
 	}
 
+    /* Default action, if impact is above
+     * paddle, go up, else if impact is
+     * below, go down, otherwise just
+     * stay still.
+     */
 	if(this->p2->getY() > impact_y)
 		*ai_dy = -5;
 	else if(this->p2->getY() < impact_y)

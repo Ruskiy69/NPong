@@ -494,13 +494,16 @@ int Menu::run()
                 this->buttons[i]->y);
         }
 
+        /* Update the screen */
         this->display->update();
+
+        /* Lower CPU usage */
+        SDL_Delay(100);
     }
 
-    /*
-        This means that the user actually wants to
-        quit, not that we just broke out of the while()
-        loop with a break statement.
+    /* This means that the user actually wants to
+     * quit, not that we just broke out of the while()
+     * loop with a break statement.
     */
     if(this->quit == true)
         return -1;
