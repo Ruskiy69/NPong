@@ -36,8 +36,21 @@ CONTROLS:
 
     - W / UP ARROW          Move paddle up
     - S / DOWN ARROW        Move paddle down
+    - ESCAPE / Q            Exit
     
 KNOWN BUGS:
 
     - If you join a multiplayer game, and the host quits,
       the game will freeze and crash.
+    - At random times, hits on paddles will not register.
+    - Hits on very corner of paddle, which wouldn't work
+      in real life, register as a hit.
+    - Junk is randomly sent during online games, it does
+      not cause problems, but uses bandwidth.
+    - Frame-rate is ridiculously slow on low-end machines.
+      
+PLANNED FEATURES:
+
+    - Scanning of the local network to find games to join.
+    - Use OpenGL for rendering to drastically improve
+      framerate.
