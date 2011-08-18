@@ -10,11 +10,11 @@
 *                    Windows                       *
 *                                                  *
 *                    Version:                      *
-*                  0.9.2 BETA                      *
+*                  0.9.4 BETA                      *
 *                                                  *
 *                   Description:                   *
-*   The classic arcade game of pong, with an       *
-*   absolutely unbeatable AI, and the ability      *
+*   The classic arcade game of pong, with a        *
+*   nearly unbeatable AI, and the ability          *
 *   to play against another human on your network. *
 *                                                  *
 ****************************************************
@@ -63,4 +63,10 @@ CHANGE LOG:
         - Various bug fixes
         - Speed improvements
     - 0.9.2
+        - Fixed bug that caused awaiting a host to
+          make the application unresponsive
+    - 0.9.3
+        - Added controls menu
+        - Added support to quit using keyboard
+    - 0.9.4
         - Added support to toggle fullscreen mode
