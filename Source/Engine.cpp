@@ -137,7 +137,7 @@ void Engine::menu()
     instructions->setCenterText(true);
 
     instructions->newText("PONG!\n \nCreated By George Kudrayvtsev");
-    instructions->newText("\nCONTROLS:\nUp Arrow: Move paddle up\nDown Arrow: Move paddle down\nEscape: Quit Game\n ");
+    instructions->newText("\nCONTROLS:\nF: Toggle fullscreen\nUp Arrow: Move paddle up\nDown Arrow: Move paddle down\nEscape: Quit Game\n ");
     instructions->newActionOption("Return", RETURN_TO_LAST);
 
     /* Add all of the main menu options */
@@ -183,13 +183,21 @@ void Engine::playGame()
     /* We want to update AI move every 10 frames */
     int frame = 0;
 
+    bool change = false;
+
     while(!quit)
     {
         /* If frame is greater than 10, make it 0, otherwise increment by 1 */
         frame > 10 ? frame = 0 : frame++;
 
         /* Handle user interaction */
-        this->eventHandler->handleGameEvents(&quit, &p1_dy);
+        this->eventHandler->handleGameEvents(&quit, &p1_dy, &change);
+
+        if(change)
+        {
+            this->display->toggleFullscreen();
+            change = false;
+        }
         
         /* Clear the score */
         SDL_FreeSurface(score);
@@ -556,10 +564,18 @@ void Engine::playMultiGame()
 
     LOG("Starting multiplayer game...", INFO);
 
+    bool change = false;
+
     while(!quit)
     {
         /* Handle user interaction */
-        this->eventHandler->handleGameEvents(&quit, &p1_dy);
+        this->eventHandler->handleGameEvents(&quit, &p1_dy, &change);
+
+        if(change)
+        {
+            this->display->toggleFullscreen();
+            change = false;
+        }
         
         /* Clear the score */
         SDL_FreeSurface(score);

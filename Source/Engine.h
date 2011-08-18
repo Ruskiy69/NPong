@@ -74,8 +74,10 @@ private:
     Socket*     peer;
     int         isHost;
 
+    /* A black background */
     SDL_Surface*    bg;
 
+    /* Score handling */
     TTF_Font*   score_font;
     int         p1_score;
     int         p2_score;

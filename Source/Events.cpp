@@ -41,7 +41,7 @@ void Events::handleMenuEvents(bool* quit, int* mouseX, int* mouseY,
     *clicked = false;
 }
 
-void Events::handleGameEvents(bool* quit, int* dy)
+void Events::handleGameEvents(bool* quit, int* dy, bool* fullscreen)
 {
 	while(SDL_PollEvent(&this->event))
 	{
@@ -65,6 +65,10 @@ void Events::handleGameEvents(bool* quit, int* dy)
 			case SDLK_s:
 				*dy =  SPEED;
 				break;
+            case SDLK_f:
+                if(fullscreen != NULL)
+                    *fullscreen = true;
+                break;
 			default:
 				break;
 			}

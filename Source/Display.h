@@ -89,7 +89,9 @@
 #define SCREEN_WIDTH    800
 #define SCREEN_HEIGHT   600
 #define SCREEN_BPP      32
-#define SCREEN_FLAGS    SDL_SWSURFACE | SDL_FULLSCREEN
+// This should NOT have SDL_FULLSCREEN in it
+// Use Display::toggleFullscreen() instead
+#define SCREEN_FLAGS    SDL_SWSURFACE
 
 // Libraries to initialize
 #define INIT_PNG_LIB    true
@@ -121,6 +123,7 @@ public:
     Display();
     ~Display();
 
+    void toggleFullscreen();
     void blit(SDL_Surface* destination, SDL_Surface* source, const unsigned int x, const unsigned int y);
     void update();
 
@@ -131,9 +134,11 @@ public:
     SDL_Surface* loadImage(const char* filename);
     SDL_Surface* loadAlphaImage(const char* filename);
 
-    SDL_Surface* icon;
-    SDL_Surface* screen;
-    SDL_Surface* background;
+    SDL_Surface*    icon;
+    SDL_Surface*    screen;
+    SDL_Surface*    background;
+
+    bool            fullscreen;
 };
 
 #endif // DISPLAY_H

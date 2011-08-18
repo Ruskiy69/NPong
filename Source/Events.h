@@ -14,7 +14,7 @@ public:
     void handleMenuEvents(bool* quit, int* mouseX, int* mouseY,
         int* mouseClickX, int* mouseClickY, bool* clicked);
 
-    void handleGameEvents(bool* quit, int* y_pos);
+    void handleGameEvents(bool* quit, int* y_pos, bool* fullscreen);
 
     void handleQuit(bool* quit);
 

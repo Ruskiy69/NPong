@@ -67,7 +67,8 @@ Display::Display()
         }
     }
 
-    this->screen = SDL_SetVideoMode(SCREEN_WIDTH, SCREEN_HEIGHT, SCREEN_BPP, SCREEN_FLAGS);
+    this->fullscreen    = false;
+    this->screen        = SDL_SetVideoMode(SCREEN_WIDTH, SCREEN_HEIGHT, SCREEN_BPP, SCREEN_FLAGS);
 
     if(!this->screen)
     {
@@ -85,6 +86,18 @@ Display::~Display()
     if(INIT_PNG_LIB)
         IMG_Quit();
     SDL_Quit();
+}
+
+void Display::toggleFullscreen()
+{
+    this->fullscreen = !this->fullscreen;
+
+    Uint32 flags = SCREEN_FLAGS;
+    
+    if(this->fullscreen)
+        flags |= SDL_FULLSCREEN;
+
+    SDL_SetVideoMode(SCREEN_WIDTH, SCREEN_HEIGHT, SCREEN_BPP, flags);
 }
 
 void Display::blit(SDL_Surface* destination, SDL_Surface* source, const unsigned int x, const unsigned int y)
