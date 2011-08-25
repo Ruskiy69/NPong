@@ -55,7 +55,7 @@ Menu::~Menu()
     {
         delete this->buttons[i];
     }
-    
+
     this->buttons.clear();
 
     if(this->music != NULL)
@@ -424,6 +424,8 @@ int Menu::run()
                     return -1;
                 else if(this->buttons[status]->action == RETURN_TO_LAST)
                     return 1;
+                else if(this->buttons[status]->action == LOAD_GAME)
+                    return 3;
                 else if(this->buttons[status]->action == PLAY_GAME)
                 {
                     Mix_HaltMusic();

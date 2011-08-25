@@ -19,13 +19,30 @@ Socket::Socket(const int family, const int sock_type, SOCK_TYPE socket_type)
     this->hints.ai_socktype = sock_type;
 }
 
+Socket::Socket()
+{
+#ifdef _WIN32
+    WSADATA wsadata;
+    if(WSAStartup(MAKEWORD(2, 0), &wsadata) != 0)
+        handleError("Unable to initialize WinSock!");
+#endif // _WIN32
+
+    this->sock          = INVALID_SOCKET;
+    this->client_sock   = INVALID_SOCKET;
+    this->timeout       = 10;
+
+    memset(&this->hints, 0, sizeof this->hints);
+}
+
 Socket::~Socket()
 {
 #ifdef _WIN32
     WSACleanup();
     closesocket(this->sock);
+    closesocket(this->client_sock);
 #else
     close(this->sock);
+    close(this->client_sock);
 #endif // _WIN32
 }
 
@@ -106,10 +123,10 @@ int Socket::nonBlockAccept()
 
     setup               = true;
     int tmp             = ::accept(this->sock, (struct sockaddr*) &this->client_addr, &this->addr_size);
-    
+
     if(tmp != -1)
         this->client_sock = tmp;
-    
+
     return tmp;
 }
 
@@ -172,6 +189,51 @@ void Socket::bind(const char* host, const char* port)
 void Socket::listen(const int backlog)
 {
     ::listen(this->sock, backlog);
+}
+
+int Socket::ping(const char* host, const int ttl_tmp)
+{
+    int seq_no              = 0;
+    int packet_size         = DEFAULT_PACKET_SIZE;
+    int ttl                 = ttl_tmp;
+    int retval              = 0;
+
+    ICMPHeader* send_buf    = NULL;
+    IPHeader* recv_buf      = NULL;
+    int sd                  = INVALID_SOCKET;
+
+    sockaddr_in dest, source;
+    
+    packet_size = max(sizeof(ICMPHeader), min(MAX_PING_DATA_SIZE, (unsigned int)packet_size));
+
+    send_buf = (ICMPHeader*)new char[packet_size];  
+    recv_buf = (IPHeader*)new char[MAX_PING_PACKET_SIZE];
+    if(send_buf == NULL || recv_buf == NULL)
+        handleError("Not enough memory!");
+
+    this->ICMP_Setup(host, ttl, sd, dest);
+    this->ICMP_Init(send_buf, packet_size, seq_no);
+
+    retval = this->ICMP_Send(sd, dest, send_buf, packet_size);
+
+    if(retval >= 0)
+    {
+        while(true)
+        {
+            retval = this->ICMP_Recv(sd, source, recv_buf, (const int)MAX_PING_PACKET_SIZE);
+            if(retval < 0)
+                break;
+
+            retval = this->ICMP_Decode(recv_buf, packet_size, &source);
+            if(retval != -2)
+                break;
+        }
+    }
+
+    delete[] send_buf;
+    delete[] recv_buf;
+
+    return retval;
 }
 
 void Socket::sendall(const char* data)
@@ -289,7 +351,6 @@ char* Socket::getpeername()
 #endif // _WIN32
 
     return peername;
-    delete[] peername;
 }
 
 void Socket::shutdown(const int how)
@@ -311,4 +372,110 @@ int Socket::getClientSock()
         return this->client_sock;
     else
         return -1;
+}
+
+int Socket::ICMP_Setup(const char* host, const int ttl, int& sd, sockaddr_in& dest)
+{
+    sd = socket(AF_INET, SOCK_RAW, IPPROTO_ICMP);
+    
+    if(sd == INVALID_SOCKET)
+        return -1;
+
+    setsockopt(sd, IPPROTO_IP, IP_TTL, (const char*) &ttl, sizeof ttl);
+
+    memset(&dest, 0, sizeof dest);
+
+    UINT addr = inet_addr(host);
+    dest.sin_addr.s_addr = addr;
+    dest.sin_family = AF_INET;
+
+    hostent* hp = gethostbyname(host);
+    memcpy(&(dest.sin_addr), hp->h_addr, hp->h_length);
+    dest.sin_family = hp->h_addrtype;
+
+    return 0;
+}
+
+void Socket::ICMP_Init(ICMPHeader* icmp, const int size, const int seq_no)
+{
+    icmp->type      = ICMP_ECHO_REQUEST;
+    icmp->code      = 0;
+    icmp->chk       = 0;
+    icmp->id        = (unsigned short)GetCurrentProcessId();
+    icmp->seq       = seq_no;
+    icmp->time      = GetTickCount();
+
+    const unsigned long int dead = 0xDEADBEEF;
+    char* datapart = (char*)icmp + sizeof(ICMPHeader);
+    int to_send = size - sizeof(ICMPHeader);
+
+    while(to_send > 0)
+    {
+        memcpy(datapart, &dead, min(int(sizeof dead), to_send));
+        to_send -= sizeof dead;
+        datapart += sizeof dead;
+    }
+
+    icmp->chk = this->ICMP_Checksum((unsigned short*)icmp, size);
+}
+
+int Socket::ICMP_Send(int sd, sockaddr_in& dest, ICMPHeader* send_buf, const int size)
+{
+    int sent = ::sendto(sd, (char*)send_buf, size, 0, (sockaddr*)&dest, sizeof dest);
+
+    if(sent == SOCKET_ERROR)
+        return -1;
+
+    return 0;
+}
+
+int Socket::ICMP_Recv(int sd, sockaddr_in& src, IPHeader* recv_buf, const int size)
+{
+    int fromlen = sizeof src;
+    int bread   = recvfrom(sd, (char*)recv_buf, size + sizeof(IPHeader), 0, (sockaddr*)&src, &fromlen);
+
+    return bread == SOCKET_ERROR ? -1 : 0;
+}
+
+int Socket::ICMP_Decode(IPHeader* reply, const int bytes, sockaddr_in* from)
+{
+    unsigned short header_len = reply->h_len * 4;
+    ICMPHeader* icmp = (ICMPHeader*)((char*)reply + header_len);
+
+    if(bytes < header_len + ICMP_PACKET_SIZE)
+    {
+        return -1;
+    }
+    else if(icmp->type != ICMP_ECHO_REPLY)
+    {
+        if(icmp->type != ICMP_TTL_EXPIRE)
+        {
+            return -1;
+        }
+    }
+    else if(icmp->id != (unsigned short)GetCurrentProcessId())
+        return -2;
+
+    return 0;
+}
+
+unsigned short Socket::ICMP_Checksum(unsigned short* buffer, int size) 
+{
+    unsigned long cksum = 0;
+    
+    // Sum all the words together, adding the final byte if size is odd
+    while (size > 1) {
+        cksum += *buffer++;
+        size -= sizeof(unsigned short);
+    }
+    if (size) {
+        cksum += *(UCHAR*)buffer;
+    }
+
+    // Do a little shuffling
+    cksum = (cksum >> 16) + (cksum & 0xffff);
+    cksum += (cksum >> 16);
+    
+    // Return the bitwise complement of the resulting mishmash
+    return (unsigned short)(~cksum);
 }

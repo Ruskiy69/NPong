@@ -45,9 +45,9 @@ Engine::Engine()
 
     this->fps->setFrameRate(FPS);
 
-#ifdef DEBUG
+#ifdef _DEBUG
     LOG("Constructor complete", DEBUG);
-#endif // DEBUG
+#endif // _DEBUG
 }
 
 Engine::~Engine()
@@ -67,9 +67,9 @@ Engine::~Engine()
 
     SDL_FreeSurface(this->bg);
 
-#ifdef DEBUG
+#ifdef _DEBUG
     LOG("Destructor complete", DEBUG);
-#endif // DEBUG
+#endif // _DEBUG
 
     LOG("Game over!", INFO);
 
@@ -86,9 +86,9 @@ void Engine::menu()
     /* The menu font */
     TTF_Font* menu_font = TTF_OpenFont("Data"FN_SLASH"MainFont.ttf", 24);
 
-#ifdef DEBUG
+#ifdef _DEBUG
     LOG("Creating menus...", DEBUG);
-#endif // DEBUG
+#endif // _DEBUG
 
     /* Set up the menus, giving them a
      * -font
@@ -121,7 +121,8 @@ void Engine::menu()
     /* The second arg is irrelevant here */
     this->mpMenu->newText("PONG!\n \nCreated By George Kudrayvtsev\n ");
     this->mpMenu->newActionOption("Host a Game", PLAY_GAME);
-    this->mpMenu->newActionOption("Join a Game", PLAY_MULTI_GAME);
+    this->mpMenu->newActionOption("Manually Enter a Server", PLAY_MULTI_GAME);
+    this->mpMenu->newActionOption("Scan For Games", LOAD_GAME);
     this->mpMenu->newActionOption("Return", RETURN_TO_LAST);  // Except in this one
 
     /* A menu with the controls to help out the user.
@@ -154,8 +155,10 @@ void Engine::menu()
         return;
     else if(ret == 0)   // 0 means play single
         this->playGame();
-    else if(ret == 2)   // 2 means play multi
+    else if(ret == 2)   // 2 means play multi, enter host
         this->setupMulti();
+    else if(ret == 3)   // 3 means play multi, scan network
+        this->setupMulti(true);
     else    // Some error?
         handleError("The main menu returned an undefined value!", false);
 }
@@ -171,7 +174,7 @@ void Engine::playGame()
 
     int ball_dx = 8;
     int ball_dy = -8;
-    
+
     /* Handling the score */
     stringstream score_ss;
     score_ss << this->p1_score << "    |    " << this->p2_score;
@@ -198,7 +201,7 @@ void Engine::playGame()
             this->display->toggleFullscreen();
             change = false;
         }
-        
+
         /* Clear the score */
         SDL_FreeSurface(score);
         score_ss.str(string());
@@ -296,7 +299,7 @@ void Engine::playGame()
 		{
 			ball_dy = -(ball_dy);
 		}
-        
+
         /* Did the ball hit either paddle? */
 	    if(detectCollision(*this->ball->getCollisionBox(), *this->p1->getCollisionBox()) || 
 		    detectCollision(*this->ball->getCollisionBox(), *this->p2->getCollisionBox()))
@@ -321,221 +324,240 @@ void Engine::playGame()
     }
 }
 
-void Engine::setupMulti()
+void Engine::setupMulti(bool scanNetwork)
 {
-#ifdef DEBUG
+#ifdef _DEBUG
     LOG("Host or Join?", DEBUG);
-#endif // DEBUG
+#endif // _DEBUG
 
     /* Run the multiplayer menu */
-    int retval = this->mpMenu->run();
-
-    if(retval == 1) // Return to previous (main) menu
-        this->menu();
-    else if(retval == 0)    // Host
+    if(!scanNetwork)
     {
-        /* If the user wants to host a game,
-         * NPong will create a socket and accept
-         * a connection on the default port, 2012.
-         * The host controls ball movement and the
-         * score, the client only controls his or
-         * her own paddle.
-         */
-#ifdef DEBUG
-        LOG("Host", DEBUG);
-#endif // DEBUG
+        int retval = this->mpMenu->run();
 
-        this->isHost = true;
-        this->peer = new Socket(AF_INET, SOCK_STREAM, TCP_SERVER);
-        this->peer->bind("", DEF_PONG_PORT);
-        this->peer->listen(1);
-        
-        /* To handle exiting */
+        if(retval == 1) // Return to previous (main) menu
+            this->menu();
+        else if(retval == 0)    // Host
+        {
+            /* If the user wants to host a game,
+             * NPong will create a socket and accept
+             * a connection on the default port, 2012.
+             * The host controls ball movement and the
+             * score, the client only controls his or
+             * her own paddle.
+             */
+    #ifdef _DEBUG
+            LOG("Host", DEBUG);
+    #endif // _DEBUG
+
+            this->isHost = true;
+            this->peer = new Socket(AF_INET, SOCK_STREAM, TCP_SERVER);
+            this->peer->bind("", DEF_PONG_PORT);
+            this->peer->listen(1);
+
+            /* To handle exiting */
+            bool quit = false;
+
+            /* So the user knows what's going on */
+            SDL_Surface* status = renderMultiLineText(
+                this->score_font, "Awaiting an opponent...",
+                createColor(BLACK), createColor(WHITE), 
+                CREATE_SURFACE | ALIGN_CENTER);
+
+            while(!quit)
+            {
+                this->eventHandler->handleQuit(&quit);
+
+                /* Update the images and text on the screen */
+                BLIT(this->bg, 0, 0);
+                BLIT(status, SCREEN_WIDTH / 2 - status->clip_rect.w / 2, 100);
+                this->display->update();
+
+                /* Await a connection. It is non-blocking so the
+                 * user can now safely exit.
+                 */
+                int opponent = this->peer->nonBlockAccept();
+
+                if(opponent != -1)
+                {
+                    break;
+                }
+
+                /* Lower CPU usage */
+                SDL_Delay(10);
+            }
+
+            if(!quit)
+            {
+    #ifdef _DEBUG
+                /* Log the socket file descriptor so it's not an error */
+                logger << "Socket FD: " << this->peer->getClientSock();
+                LOG(logger.str(), DEBUG);
+                logger.str(string());
+    #endif // _DEBUG
+
+                /* Get the confirmation of connection message from the opponent */
+                char* msg = NULL;
+                do
+                {
+                    msg = this->peer->recv();
+    #ifdef _DEBUG
+                    LOG(msg, DEBUG);
+    #endif // _DEBUG
+
+                }
+                while(strncmp(msg, "CONNECT\n", 8) != 0);
+
+                /* Just show the user that someone is
+                 * ready to play.
+                 * TODO: Add a confirmation message so incase
+                 * user is AFK they can be informed.
+                 */
+
+    #ifdef _DEBUG
+                LOG("Peer sent \"CONNECT\\n\" message!", DEBUG);
+    #endif // _DEBUG
+
+                SDL_FreeSurface(status);
+                status = renderMultiLineText(
+                    this->score_font, "Starting match...",
+                    createColor(BLACK), createColor(WHITE), 
+                    CREATE_SURFACE | ALIGN_CENTER);
+
+                /* Put surfaces onto screen */
+                BLIT(this->bg, 0, 0);
+                BLIT(status, SCREEN_WIDTH / 2 - status->clip_rect.w / 2, 100);
+
+                /* Update screen */
+                this->display->update();
+
+                /* We have received a connect message, so we can now play. */
+                this->playMultiGame();
+            }
+
+        }
+        else if(retval == 2)    // Join
+        {
+            /* Join a server that has been created on the LAN.
+             * Currently does not connect over the Internet.
+             * FIXME: Make NPong work over the Internet.
+             */
+    #ifdef _DEBUG
+            LOG("Join", DEBUG);
+            LOG("Prompting for IP...", DEBUG);
+    #endif // _DEBUG
+
+            /* We want to join, not host */
+            this->isHost = false;
+
+            /* Instructions */
+            SDL_Surface* main_line = renderMultiLineText(this->score_font,
+                "Enter the server IP address:", createColor(BLACK), createColor(WHITE),
+                ALIGN_CENTER | CREATE_SURFACE | TRANSPARENT_BG);
+
+            /* Quitting var */
+            bool quit = false;
+
+            /* Surface to show what user types */
+            SDL_Surface* ip_surf = renderMultiLineText(this->score_font,
+                " ", createColor(BLACK), createColor(WHITE),
+                ALIGN_CENTER | CREATE_SURFACE | TRANSPARENT_BG);
+
+            SDL_Event evt;
+            string ip = "";
+
+            /* Needed to get char from keyboard */
+            SDL_EnableUNICODE(SDL_ENABLE); 
+
+            while(!quit)
+            {
+                SDL_FreeSurface(ip_surf);
+                ip_surf = renderMultiLineText(this->score_font, ip, 
+                    createColor(BLACK), createColor(WHITE),
+                    ALIGN_CENTER | CREATE_SURFACE | TRANSPARENT_BG);
+
+                if(SDL_PollEvent(&evt))
+                {
+                    switch(evt.type)
+                    {
+                    case SDL_QUIT:
+                        quit = true;
+                        break;
+                    case SDL_KEYDOWN:
+                        /* Only numbers and periods for IP addresses */
+                        if((evt.key.keysym.unicode >= (Uint16)'0') &&
+                            (evt.key.keysym.unicode <= (Uint16)'9'))
+                        {
+                            ip += (char)evt.key.keysym.unicode;
+                        }
+                        else if(evt.key.keysym.sym == SDLK_BACKSPACE)
+                        {
+                            ip = ip.substr(0, ip.length() - 1);
+                        }
+                        else if(evt.key.keysym.unicode == (Uint16)'.')
+                        {
+                            ip += (char)evt.key.keysym.unicode;
+                        }
+                        break;
+                    }
+                }
+                if(evt.key.keysym.sym == SDLK_RETURN)   // Done
+                {
+                    break;
+                }
+
+                /* Put all surfaces on the screen */
+                BLIT(this->bg, 0, 0);
+                BLIT(main_line, SCREEN_WIDTH / 2 - main_line->clip_rect.w / 2, 100);
+                BLIT(ip_surf, SCREEN_WIDTH / 2 - ip_surf->clip_rect.w / 2, 200);
+
+                /* Update everything for the user to see */
+                this->display->update();
+
+#ifdef _WIN32
+                Sleep(10);
+#else
+                sleep(10);
+#endif // _WIN32
+            }
+
+            /* Unicode isn't needed anymore */
+            SDL_EnableUNICODE(SDL_DISABLE);
+
+            /* As long as there something entered and user
+             * didn't want to quit, we have to create a socket
+             * and connect to the IP. Error handling is done
+             * by Socket::connect(). Once connected we send 
+             * "CONNECT\n" to the server to show we are available.
+             */
+            if(ip != "" && !quit)
+            {
+    #ifdef _DEBUG
+                logger << "The IP address is: " << ip;
+                LOG(logger.str(), DEBUG);
+                logger.str(string());
+    #endif // __DEBUG
+
+                this->peer = new Socket(AF_INET, SOCK_STREAM);
+                this->peer->connect(ip.c_str(), DEF_PONG_PORT);
+                this->peer->sendall("CONNECT\n");
+                this->playMultiGame();
+            }
+        }
+    }
+    else
+    {
         bool quit = false;
 
-        /* So the user knows what's going on */
-        SDL_Surface* status = renderMultiLineText(
-            this->score_font, "Awaiting an opponent...",
-            createColor(BLACK), createColor(WHITE), 
-            CREATE_SURFACE | ALIGN_CENTER);
+        SDL_Surface* scan = renderMultiLineText(this->score_font, 
+            "Scanning for games...", createColor(BLACK), createColor(WHITE),
+            ALIGN_CENTER | TRANSPARENT_BG | CREATE_SURFACE);
 
         while(!quit)
         {
             this->eventHandler->handleQuit(&quit);
-
-            /* Update the images and text on the screen */
-            BLIT(this->bg, 0, 0);
-            BLIT(status, SCREEN_WIDTH / 2 - status->clip_rect.w / 2, 100);
+            BLIT(scan, SCREEN_WIDTH / 2 - scan->clip_rect.w / 2, 100);
             this->display->update();
-
-            /* Await a connection. It is non-blocking so the
-             * user can now safely exit.
-             */
-            int opponent = this->peer->nonBlockAccept();
-
-            if(opponent != -1)
-            {
-                break;
-            }
-
-            /* Lower CPU usage */
-            SDL_Delay(10);
-        }
-
-        if(!quit)
-        {
-#ifdef DEBUG
-            /* Log the socket file descriptor so it's not an error */
-            logger << "Socket FD: " << this->peer->getClientSock();
-            LOG(logger.str(), DEBUG);
-            logger.str(string());
-#endif // DEBUG
-
-            /* Get the confirmation of connection message from the opponent */
-            char* msg = NULL;
-            do
-            {
-                msg = this->peer->recv();
-#ifdef DEBUG
-                LOG(msg, DEBUG);
-#endif // DEBUG
-
-            }
-            while(strncmp(msg, "CONNECT\n", 8) != 0);
-
-            /* Just show the user that someone is
-                * ready to play.
-                * TODO: Add a confirmation message so incase
-                * user is AFK they can be informed.
-                */
-
-#ifdef DEBUG
-            LOG("Peer sent \"CONNECT\\n\" message!", DEBUG);
-#endif // DEBUG
-
-            SDL_FreeSurface(status);
-            status = renderMultiLineText(
-                this->score_font, "Starting match...",
-                createColor(BLACK), createColor(WHITE), 
-                CREATE_SURFACE | ALIGN_CENTER);
-
-            /* Put surfaces onto screen */
-            BLIT(this->bg, 0, 0);
-            BLIT(status, SCREEN_WIDTH / 2 - status->clip_rect.w / 2, 100);
-
-            /* Update screen */
-            this->display->update();
-
-            /* We have received a connect message, so we can now play. */
-            this->playMultiGame();
-        }
-
-    }
-    else if(retval == 2)    // Join
-    {
-        /* Join a server that has been created on the LAN.
-         * This could potentially work over the Internet, 
-         * but is currently untested and probably laggy
-         * and buggy in the case that it really does work.
-         * TODO: Test NPong over the Internet.
-         */
-#ifdef DEBUG
-        LOG("Join", DEBUG);
-        LOG("Prompting for IP...", DEBUG);
-#endif // DEBUG
-
-        /* We want to join, not host */
-        this->isHost = false;
-
-        /* Instructions */
-        SDL_Surface* main_line = renderMultiLineText(this->score_font,
-            "Enter the server IP address:", createColor(BLACK), createColor(WHITE),
-            ALIGN_CENTER | CREATE_SURFACE | TRANSPARENT_BG);
-
-        /* Quitting var */
-        bool quit = false;
-
-        /* Surface to show what user types */
-        SDL_Surface* ip_surf = renderMultiLineText(this->score_font,
-            " ", createColor(BLACK), createColor(WHITE),
-            ALIGN_CENTER | CREATE_SURFACE | TRANSPARENT_BG);
-
-        SDL_Event evt;
-        string ip = "";
-
-        /* Needed to get char from keyboard */
-        SDL_EnableUNICODE(SDL_ENABLE); 
-
-        while(!quit)
-        {
-            SDL_FreeSurface(ip_surf);
-            ip_surf = renderMultiLineText(this->score_font, ip, 
-                createColor(BLACK), createColor(WHITE),
-                ALIGN_CENTER | CREATE_SURFACE | TRANSPARENT_BG);
-
-            if(SDL_PollEvent(&evt))
-            {
-                switch(evt.type)
-                {
-                case SDL_QUIT:
-                    quit = true;
-                    break;
-                case SDL_KEYDOWN:
-                    /* Only numbers and periods for IP addresses */
-                    if((evt.key.keysym.unicode >= (Uint16)'0') &&
-                        (evt.key.keysym.unicode <= (Uint16)'9'))
-                    {
-                        ip += (char)evt.key.keysym.unicode;
-                    }
-                    else if(evt.key.keysym.unicode = (Uint16)'.')
-                    {
-                        ip += (char)evt.key.keysym.unicode;
-                    }
-                    else if(evt.key.keysym.sym == SDLK_BACKSPACE)
-                    {
-                        /* TODO: Fix backspacing */
-                        ip.erase(ip.length() - 1);
-                    }
-                }
-            }
-            if(evt.key.keysym.sym == SDLK_RETURN)   // Done
-            {
-                break;
-            }
-
-            /* Put all surfaces on the screen */
-            BLIT(this->bg, 0, 0);
-            BLIT(main_line, SCREEN_WIDTH / 2 - main_line->clip_rect.w / 2, 100);
-            BLIT(ip_surf, SCREEN_WIDTH / 2 - ip_surf->clip_rect.w / 2, 200);
-
-            /* Update everything for the user to see */
-            this->display->update();
-
-            /* Lower CPU usage */
-            SDL_Delay(100);
-        }
-
-        /* Unicode isn't needed anymore */
-        SDL_EnableUNICODE(SDL_DISABLE);
-
-        /* As long as there something entered and user
-         * didn't want to quit, we have to create a socket
-         * and connect to the IP. Error handling is done
-         * by Socket::connect(). Once connected we send 
-         * "CONNECT\n" to the server to show we are available.
-         */
-        if(ip != "" && !quit)
-        {
-#ifdef DEBUG
-            logger << "The IP address is: " << ip;
-            LOG(logger.str(), DEBUG);
-            logger.str(string());
-#endif // DEBUG
-
-            this->peer = new Socket(AF_INET, SOCK_STREAM);
-            this->peer->connect(ip.c_str(), DEF_PONG_PORT);
-            this->peer->sendall("CONNECT\n");
-            this->playMultiGame();
         }
     }
 }
@@ -553,7 +575,7 @@ void Engine::playMultiGame()
 
     int ball_dx = 5;
     int ball_dy = -5;
-    
+
     /* Handling the score */
     stringstream score_ss;
     score_ss << this->p1_score << "    |    " << this->p2_score;
@@ -576,7 +598,7 @@ void Engine::playMultiGame()
             this->display->toggleFullscreen();
             change = false;
         }
-        
+
         /* Clear the score */
         SDL_FreeSurface(score);
         score_ss.str(string());
@@ -691,7 +713,7 @@ void Engine::sendPosition()
     stringstream ss;
     ss << "X:" << this->p1->getX();
     ss << "Y:" << this->p1->getY();
-    
+
     if(this->isHost)
     {
         /* Only the host can control ball position and score.
@@ -700,7 +722,7 @@ void Engine::sendPosition()
          */
         ss << "P1SCORE:" << this->p1_score;
         ss << "P2SCORE:" << this->p2_score;
-        
+
         if(this->ball->getX() > SCREEN_WIDTH / 2)
             ss << "BALLX:" << SCREEN_WIDTH / 2 - (this->ball->getX() - (SCREEN_WIDTH / 2));
         else
@@ -710,8 +732,8 @@ void Engine::sendPosition()
     }
 
     ss << "\n";
-    
-#ifdef DEBUG
+
+#ifdef _DEBUG
     /* Do some logging for debug purposes */
     logger << "Sent " << sizeof ss.str() << " bytes.";
     LOG(logger.str(), DEBUG);
@@ -719,7 +741,7 @@ void Engine::sendPosition()
     logger << "Sending coordinates: " << ss.str();
     LOG(logger.str(), DEBUG);
     logger.str(string());
-#endif // DEBUG
+#endif // _DEBUG
 
     /* Send the complete message, in the format
      * X:x-coorY:y-coorP1SCORE:player1-score:P2SCORE:player2-scoreBALLX:ball-xBALLY:ball-y\n
@@ -741,12 +763,12 @@ void Engine::recvPosition(int* y)
         msg.find("X:") == -1)
         return;
 
-#ifdef DEBUG
+#ifdef _DEBUG
     /* Logging to debug easily */
     logger << "Received data from peer: " << msg;
     LOG(logger.str(), DEBUG);
     logger.str(string());
-#endif // DEBUG
+#endif // _DEBUG
 
     /* All variables to parse:
      * paddle_x, paddle_y, ball_x,
@@ -781,23 +803,23 @@ void Engine::delayFps()
     /* Calculate frame rate and how much to pause in order
      * to keep a constant frame rate.
      */
-#ifdef DEBUG
+#ifdef _DEBUG
     logger << "Ticks: " << this->fps->getTicks();
     logger << " FPS: " << this->fps->FRAME_RATE;
     logger << " Calc: " << 1000 / this->fps->FRAME_RATE;
     LOG(logger.str(), DEBUG);
     logger.str(string());
-#endif // DEBUG
+#endif // _DEBUG
 
     if(((unsigned)this->fps->getTicks() < 1000 / this->fps->FRAME_RATE))
     {
         int delay = (1000 / this->fps->FRAME_RATE) - this->fps->getTicks();
-        
-#ifdef DEBUG
+
+#ifdef _DEBUG
         logger << "Delaying for " << delay << "ms";
         LOG(logger.str(), DEBUG);
         logger.str(string());
-#endif // DEBUG
+#endif // _DEBUG
 
         SDL_Delay(delay);
     }
@@ -824,12 +846,12 @@ void Engine::calcMove(int* ai_dy, const int dx, const int dy)
      */
 	int tmp           = abs(impact_y);
 
-#ifdef DEBUG
+#ifdef _DEBUG
     /* Log to debug and inform */
     logger << "Estimated impact: " << impact_y;
     LOG(logger.str(), DEBUG);
     logger.str(string());
-#endif // DEBUG
+#endif // _DEBUG
 
     /* If the ball is going away from the AI paddle,
      * we need to move back toward the middle for

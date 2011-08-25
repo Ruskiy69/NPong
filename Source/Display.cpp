@@ -93,7 +93,7 @@ void Display::toggleFullscreen()
     this->fullscreen = !this->fullscreen;
 
     Uint32 flags = SCREEN_FLAGS;
-    
+
     if(this->fullscreen)
         flags |= SDL_FULLSCREEN;
 

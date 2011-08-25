@@ -10,7 +10,7 @@
 *                    Windows                       *
 *                                                  *
 *                    Version:                      *
-*                  0.9.4 BETA                      *
+*                  0.9.5 BETA                      *
 *                                                  *
 *                   Description:                   *
 *   The classic arcade game of pong, with a        *
@@ -70,3 +70,6 @@ CHANGE LOG:
         - Added support to quit using keyboard
     - 0.9.4
         - Added support to toggle fullscreen mode
+    - 0.9.5
+        - Fixed backspacing bug when typing server IP.
+        - Network scanning option added, not yet implemented.

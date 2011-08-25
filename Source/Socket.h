@@ -84,7 +84,7 @@
 #include <WS2tcpip.h>
 #include "Errors.h"
 
-// Assumes MSVC++ Compiler
+/* Assumes MSVC++ Compiler */
 #pragma comment(lib, "ws2_32.lib")
 
 #else
@@ -106,7 +106,7 @@
 #define LOOPBACK        LOCALHOST
 #define DEFAULT_PORT    "2012"
 
-// Well known services
+/* Well known services */
 #define ECHO            "7"
 #define SSH             "22"
 #define FTP             "21"
@@ -128,31 +128,99 @@
 #define DEF_PONG_HOST   "192.168.1.68"
 #define DEF_PONG_PORT   "2012"
 
-enum SOCK_TYPE {TCP_CLIENT, TCP_SERVER, UDP_CLIENT, UDP_SERVER};
+/* IP header struct and ICMP header struct
+ * for crafting ICMP packets from a RAW socket.
+ */
+#define ICMP_ECHO_REPLY         0
+#define ICMP_DEST_UNREACHABLE   3
+#define ICMP_TTL_EXPIRE         11
+#define ICMP_ECHO_REQUEST       8
+
+/* Packet size */
+#define ICMP_PACKET_SIZE        8
+#define DEFAULT_PACKET_SIZE     32
+#define MAX_PING_DATA_SIZE      1024
+#define MAX_PING_PACKET_SIZE    (MAX_PING_DATA_SIZE + sizeof(IPHeader))
+
+#define ICMP_Ping               ping
+
+/* Assuming MSVC++ compiler.
+ * We need to pack the structs.
+ */
+#ifdef _WIN32
+#pragma pack(1)
+#endif // _WIN32
+
+struct IPHeader
+{
+    unsigned char   h_len       :4;
+    unsigned char   version     :4;
+    unsigned char   tos;
+    unsigned short  total_len;
+    unsigned short  id;
+    unsigned short  flags;
+    unsigned char   ttl;
+    unsigned char   proto;
+    unsigned short  chk;
+    unsigned long   source_ip;
+    unsigned long   dest_ip;
+};
+
+struct ICMPHeader
+{
+    unsigned char   type;
+    unsigned char   code;
+    unsigned short  chk;
+    unsigned short  id;
+    unsigned short  seq;
+    unsigned long   time;
+};
+
+/* Done packing structs */
+#ifdef _WIN32
+#pragma pack()
+#endif // _WIN32
+
+enum SOCK_TYPE
+{
+    TCP_CLIENT,
+    TCP_SERVER,
+    UDP_CLIENT,
+    UDP_SERVER,
+    RAW_SOCKET,
+};
 
 class Socket
 {
 public:
 
     Socket(const int family, const int sock_type, SOCK_TYPE socket_type = TCP_CLIENT);
+    Socket();
     ~Socket();
 
     /*
-        Client-side functions
-    */
+     * Client-side functions
+     */
     void  connect(const char* hostname, const char* port);
 
     /*
-        Server-side functions
-    */
+     * Server-side functions
+     */
     int   accept();
     int   nonBlockAccept();
     void  bind(const char* host = LOCALHOST, const char* port = DEFAULT_PORT);
     void  listen(const int backlog = 5);
 
     /*
-        Functions for both server and client sockets
-    */
+     * Function to create, send, handle, and decode 
+     * a raw ICMP packet. Returns -1 on error, -2
+     * on unreachable host, and 0 on successful ping.
+     */
+    int  ping(const char* host, const int ttl = 30);
+
+    /*
+     * Functions for both server and client sockets
+     */
     void  sendall(const char* data);
     void  sendto(const char* hostname, const char* port, const char* data, const int size);
 
@@ -179,6 +247,18 @@ public:
 #endif // _WIN32
 
 private:
+    /* These are functions to be used
+     * explicity for forming and sending
+     * ICMP packets.
+     */
+    /* Functions for ping sockets and packets */
+    int  ICMP_Setup(const char* host, const int ttl, int& sd, sockaddr_in& dest);
+    int  ICMP_Send(int sd, sockaddr_in& dest, ICMPHeader* send_buf, const int size);
+    int  ICMP_Recv(int sd, sockaddr_in& src, IPHeader* recv_buf, const int size);
+    int  ICMP_Decode(IPHeader* reply, const int bytes, sockaddr_in* from);
+    void ICMP_Init(ICMPHeader* icmp, const int size, const int seq_no);
+    unsigned short ICMP_Checksum(unsigned short* buffer, const int size);
+
     int                     sock;
     int                     client_sock;
 
