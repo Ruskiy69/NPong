@@ -211,7 +211,10 @@ int Socket::ping(const char* host, const int ttl_tmp)
     if(send_buf == NULL || recv_buf == NULL)
         handleError("Not enough memory!");
 
-    this->ICMP_Setup(host, ttl, sd, dest);
+    retval = this->ICMP_Setup(host, ttl, sd, dest);
+    if(retval == -1)
+        return retval;
+    
     this->ICMP_Init(send_buf, packet_size, seq_no);
 
     retval = this->ICMP_Send(sd, dest, send_buf, packet_size);
@@ -234,6 +237,16 @@ int Socket::ping(const char* host, const int ttl_tmp)
     delete[] recv_buf;
 
     return retval;
+}
+
+void Socket::setNonBlocking()
+{
+#ifdef _WIN32
+    unsigned long on = 1;
+    ioctlsocket(this->sock, FIONBIO, &on);
+#else
+    fcntl(this->sock, F_SETFL, O_NONBLOCK);
+#endif // _WIN32
 }
 
 void Socket::sendall(const char* data)
@@ -433,8 +446,22 @@ int Socket::ICMP_Recv(int sd, sockaddr_in& src, IPHeader* recv_buf, const int si
 {
     int fromlen = sizeof src;
     int bread   = recvfrom(sd, (char*)recv_buf, size + sizeof(IPHeader), 0, (sockaddr*)&src, &fromlen);
-
-    return bread == SOCKET_ERROR ? -1 : 0;
+    if(bread == -1)
+    {
+#ifdef _WIN32
+        if(WSAGetLastError() == WSAEWOULDBLOCK)
+            return 0;
+        else
+            return -1;
+#else
+        if(errno == EWOULDBLOCK)
+            return 0;
+        else
+            return -1;
+#endif // _WIN32
+    }
+    else
+        return 0;
 }
 
 int Socket::ICMP_Decode(IPHeader* reply, const int bytes, sockaddr_in* from)

@@ -498,9 +498,142 @@ int Menu::run()
 
         /* Update the screen */
         this->display->update();
+    }
 
-        /* Lower CPU usage */
-        SDL_Delay(100);
+    /* This means that the user actually wants to
+     * quit, not that we just broke out of the while()
+     * loop with a break statement.
+    */
+    if(this->quit == true)
+        return -1;
+    else
+        return 0;
+}
+
+int Menu::runNoBlock(const int frame_tmp)
+{
+    int frame   = frame_tmp;
+    int counter = 0;
+    int mouseX, mouseY;
+    int mouseClickX, mouseClickY;
+    bool clicked;
+    int status;
+
+    if(this->music != NULL)
+    {
+        if(Mix_PlayMusic(this->music, -1) == -1)
+        {
+            handleError("In-game music disabled! Click OK for full error", false);
+            handleError(Mix_GetError(), false);
+        }
+    }
+    else if(this->music_chunk != NULL)
+    {
+        int channel = Mix_PlayChannel(-1, this->music_chunk, -1);
+    }
+
+    while(counter < frame && !this->quit)
+    {
+        counter++;
+        this->eventHandler->handleMenuEvents(&this->quit, &mouseX, &mouseY,
+            &mouseClickX, &mouseClickY, &clicked);
+
+        this->checkMouseOver(mouseX, mouseY);
+
+        /* Check where the user clicked */
+        if(clicked)
+            status = this->checkClick(mouseClickX, mouseClickY);
+        else
+            status = -1;
+
+        if(status != -1)
+        {
+            if(this->buttons[status]->type == SUB_MENU)
+            {
+                if(this->buttons[status]->nextMenu->run() == -1)
+                    return -1;
+            }
+
+            else if(this->buttons[status]->type == ACTION_MENU)
+            {
+                if(this->buttons[status]->action == QUIT_GAME)
+                    return -1;
+                else if(this->buttons[status]->action == RETURN_TO_LAST)
+                    return 1;
+                else if(this->buttons[status]->action == LOAD_GAME)
+                    return 3;
+                else if(this->buttons[status]->action == PLAY_GAME)
+                {
+                    Mix_HaltMusic();
+                    return 0;
+                }
+                else if(this->buttons[status]->action == PLAY_MULTI_GAME)
+                {
+                    Mix_HaltMusic();
+                    return 2;
+                }
+            }
+
+            else if(this->buttons[status]->type == TOGGLE_MENU)
+            {
+                string tmp(this->buttons[status]->button_text);
+
+                if(this->buttons[status]->switch_status)
+                {
+                    this->buttons[status]->switch_status = false;
+                    tmp = tmp.substr(0, tmp.find("ON"));
+                    tmp += "OFF";
+                }
+                else
+                {
+                    this->buttons[status]->switch_status = true;
+                    tmp = tmp.substr(0, tmp.find("OFF"));
+                    tmp += "ON";
+                }
+
+                delete[] this->buttons[status]->button_text;
+                this->buttons[status]->button_text = new char[tmp.length() + 1];
+                strncpy(this->buttons[status]->button_text, tmp.c_str(), tmp.length() + 1);
+
+                if(this->centerText)
+                {
+                    this->buttons[status]->normalButton = renderMultiLineText(
+                        this->font, tmp, this->hlColor, this->fgColor,
+                        ALIGN_CENTER | TRANSPARENT_BG | CREATE_SURFACE);
+
+                    this->buttons[status]->highlightedButton = renderMultiLineText(
+                        this->font, tmp, this->fgColor, this->hlColor,
+                        ALIGN_CENTER | TRANSPARENT_BG | CREATE_SURFACE);
+
+                    this->buttons[status]->x = ((SCREEN_WIDTH / 2) - 
+                        (this->buttons[status]->normalButton->clip_rect.w / 2));
+                }
+
+                else
+                {
+                    this->buttons[status]->normalButton = renderMultiLineText(
+                        this->font, tmp, this->hlColor, this->fgColor,
+                        TRANSPARENT_BG | CREATE_SURFACE);
+
+                    this->buttons[status]->highlightedButton = renderMultiLineText(
+                        this->font, tmp, this->fgColor, this->hlColor,
+                        TRANSPARENT_BG | CREATE_SURFACE);
+                }
+            }
+        }
+
+        BLIT(this->bg, 0, 0);
+
+        /* Display each menu option */
+        for(unsigned int i=0; i < this->buttons.size(); i++)
+        {
+            BLIT(this->buttons[i]->displayButton,
+                this->buttons[i]->x, 
+                this->buttons[i]->y);
+        }
+
+        /* Update the screen */
+        this->display->update();
     }
 
     /* This means that the user actually wants to

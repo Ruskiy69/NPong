@@ -221,6 +221,7 @@ public:
     /*
      * Functions for both server and client sockets
      */
+    void  setNonBlocking();
     void  sendall(const char* data);
     void  sendto(const char* hostname, const char* port, const char* data, const int size);
 

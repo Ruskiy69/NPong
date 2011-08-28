@@ -13,7 +13,7 @@
 #include "Display.h"
 #include "Events.h"
 #include "Entity.h"
-#include "MenuCreation.h"
+#include "Menus.h"
 #include "Timer.h"
 
 /* Multiplayer gaming, and error logging */
@@ -51,7 +51,7 @@ public:
 
 private:
     void playGame();
-    void setupMulti(bool scanNetwork = false);
+    void setupMulti();
     void playMultiGame();
     void sendPosition();
     void recvPosition(int* y);

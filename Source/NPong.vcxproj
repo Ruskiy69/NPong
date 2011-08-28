@@ -84,7 +84,7 @@
     <ClInclude Include="Errors.h" />
     <ClInclude Include="Events.h" />
     <ClInclude Include="Logging.h" />
-    <ClInclude Include="MenuCreation.h" />
+    <ClInclude Include="Menus.h" />
     <ClInclude Include="resource.h" />
     <ClInclude Include="SDL_Functions.h" />
     <ClInclude Include="Socket.h" />
@@ -97,8 +97,8 @@
     <ClCompile Include="Errors.cpp" />
     <ClCompile Include="Events.cpp" />
     <ClCompile Include="Logging.cpp" />
+    <ClCompile Include="Menus.cpp" />
     <ClCompile Include="NPong.cpp" />
-    <ClCompile Include="MenuCreation.cpp" />
     <ClCompile Include="SDL_Functions.cpp" />
     <ClCompile Include="Socket.cpp" />
     <ClCompile Include="Timer.cpp" />

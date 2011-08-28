@@ -115,7 +115,7 @@ enum BUTTON_TYPE
     SUB_MENU,
     ACTION_MENU,
     TOGGLE_MENU,
-    TEXT
+    TEXT,
 };
 
 /* Forward declaration so the Button struct
@@ -200,6 +200,7 @@ public:
     void newText(const char* text);
 
     int  run();
+    int  runNoBlock(const int frame);
 
     SDL_Surface* getBackground(){return this->bg;}
     char*        getFileName() const{return this->filename;}

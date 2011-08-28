@@ -11,8 +11,8 @@ public:
     Events(){}
     ~Events(){}
 
-    void handleMenuEvents(bool* quit, int* mouseX, int* mouseY,
-        int* mouseClickX, int* mouseClickY, bool* clicked);
+    void handleMenuEvents(bool* quit, int* mouseX, 
+        int* mouseY, bool* clicked);
 
     void handleGameEvents(bool* quit, int* y_pos, bool* fullscreen);
 

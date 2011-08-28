@@ -2,8 +2,8 @@
 
 using namespace std;
 
-void Events::handleMenuEvents(bool* quit, int* mouseX, int* mouseY,
-        int* mouseClickX, int* mouseClickY, bool* clicked)
+void Events::handleMenuEvents(bool* quit, int* mouseX,
+    int* mouseY, bool* clicked)
 {
     while(SDL_PollEvent(&this->event))
     {
@@ -24,8 +24,8 @@ void Events::handleMenuEvents(bool* quit, int* mouseX, int* mouseY,
             if(this->event.button.button == SDL_BUTTON_LEFT)
             {
                 *clicked = true;
-                *mouseClickX = this->event.button.x;
-                *mouseClickY = this->event.button.y;
+                *mouseX = this->event.button.x;
+                *mouseY = this->event.button.y;
                 SDL_GetMouseState(mouseX, mouseY);
                 return;
             }
