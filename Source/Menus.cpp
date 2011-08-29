@@ -150,11 +150,11 @@ void Menu::setCenterText(bool toggle)
 }
 
  int Menu::addMenuOption(
-            const char* text, 
-            BUTTON_TYPE btn,
-            ACTION_TYPE act,
-            Menu*       SubMenu,
-            bool        onByDefault)
+            const char*     text, 
+            BUTTON_TYPE     btn,
+            ACTION_TYPE     act,
+            Menu*           SubMenu,
+            bool            onByDefault)
 {
     switch(btn)
     {
@@ -170,7 +170,7 @@ void Menu::setCenterText(bool toggle)
         case BTN_ACTION:
             if(act == ACT_NONE)
                 return -1;
-            else
+            else if(act != ACT_PROMPT)
                 return this->addAction(text, act);
 
         case BTN_TOGGLE:
@@ -186,7 +186,8 @@ void Menu::setCenterText(bool toggle)
 
  void Menu::removeMenuOption(const int id)
  {
-     this->buttons[id] = NULL;
+     if(id - 69 < this->buttons.size())
+         this->buttons[id - 69] = NULL;
  }
 
  int Menu::findMenuOptionByText(const char* text)
@@ -223,8 +224,9 @@ int Menu::checkClick(const int x, const int y)
 {
     for(unsigned int i=0; i < this->buttons.size(); i++)
     {
-        if(detectCollision(this->buttons[i]->mouseOver, createRect(x, y, 0, 0)))
-            return i;
+        if(this->buttons[i] != NULL)
+            if(detectCollision(this->buttons[i]->mouseOver, createRect(x, y, 0, 0)))
+                return i;
     }
     return -1;
 }
@@ -605,9 +607,7 @@ int Menu::Run()
                     return this->buttons[status]->id;
                 }
                 else if(this->buttons[status]->act_type == ACT_GENERIC)
-                {
                     return this->buttons[status]->id;
-                }
             }
 
             else if(this->buttons[status]->btn_type == BTN_GENERIC)

@@ -33,6 +33,15 @@ static const int P2Y_START      = SCREEN_HEIGHT / 2;
 static const int BALL_X_START   = SCREEN_WIDTH / 2;
 static const int BALL_Y_START   = SCREEN_HEIGHT / 2;
 
+/* Constants for the multiplayer menu
+ * to choose options and act accordingly.
+ */
+static const int HOSTING        = 0x01;
+static const int RESTART        = 0x02;
+static const int SCAN_JOIN      = 0x04;
+static const int SCAN_NONE      = 0x08;
+static const int MANUAL         = 0x16;
+
 /* Split a string everywhere it finds a 
  * certain character. Returns a vector.
  */

@@ -89,6 +89,7 @@ enum ACTION_TYPE
     ACT_QUIT,
     ACT_RETURN,
     ACT_PLAY,
+    ACT_PROMPT,
     ACT_NONE
 };
 
@@ -180,11 +181,11 @@ public:
      * button type is chosen.
      */
     int  addMenuOption(
-            const char* text, 
-            BUTTON_TYPE btn,
-            ACTION_TYPE act,
-            Menu*       SubMenu     = NULL,
-            bool        onByDefault = true);
+            const char*     text, 
+            BUTTON_TYPE     btn,
+            ACTION_TYPE     act,
+            Menu*           SubMenu     = NULL,
+            bool            onByDefault = true);
 
     /* Remove an option from the menu. This makes it easy to
      * modify menus on the fly instead of re-creating a menu

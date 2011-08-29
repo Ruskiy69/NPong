@@ -102,28 +102,8 @@ void Socket::connect(const char* hostname, const char* port)
 int Socket::accept()
 {
     this->addr_size     = sizeof this->client_addr;
-    this->client_sock   = ::accept(this->sock, (struct sockaddr*) &this->client_addr, &this->addr_size);
-    return this->client_sock;
-}
-
-int Socket::nonBlockAccept()
-{
-    static bool setup = false;
-
-    /* This is only done on the first call to nonBlockAccept() */
-    if(!setup)
-    {
-        u_long no_block = 1;
-        if(ioctlsocket(this->sock, FIONBIO, &no_block) != NO_ERROR)
-        {
-            handleError("Unable to make a non-blocking socket!");
-        }
-        this->addr_size = sizeof this->client_addr;
-    }
-
-    setup               = true;
     int tmp             = ::accept(this->sock, (struct sockaddr*) &this->client_addr, &this->addr_size);
-
+    
     if(tmp != -1)
         this->client_sock = tmp;
 
@@ -243,7 +223,8 @@ void Socket::setNonBlocking()
 {
 #ifdef _WIN32
     unsigned long on = 1;
-    ioctlsocket(this->sock, FIONBIO, &on);
+    if(ioctlsocket(this->sock, FIONBIO, &on) != NO_ERROR)
+        handleError("Unable to set nonblocking socket!");
 #else
     fcntl(this->sock, F_SETFL, O_NONBLOCK);
 #endif // _WIN32

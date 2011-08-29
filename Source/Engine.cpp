@@ -45,9 +45,7 @@ Engine::Engine()
 
     this->fps->setFrameRate(FPS);
 
-#ifdef _DEBUG
     LOG("Constructor complete", DEBUG);
-#endif // _DEBUG
 }
 
 Engine::~Engine()
@@ -67,10 +65,7 @@ Engine::~Engine()
 
     SDL_FreeSurface(this->bg);
 
-#ifdef _DEBUG
     LOG("Destructor complete", DEBUG);
-#endif // _DEBUG
-
     LOG("Game over!", INFO);
 
     logger << "The final score was " << this->p1_score << " to " << this->p2_score;
@@ -86,10 +81,7 @@ void Engine::menu()
     /* The menu font */
     TTF_Font* menu_font = TTF_OpenFont("Data"FN_SLASH"MainFont.ttf", 24);
 
-#ifdef _DEBUG
     LOG("Creating menus...", DEBUG);
-#endif // _DEBUG
-
     /* Set up the menus, giving them a
      * -font
      * -background image
@@ -332,9 +324,7 @@ void Engine::playGame()
 
 void Engine::setupMulti()
 {
-#ifdef _DEBUG
     LOG("Host or Join?", DEBUG);
-#endif // _DEBUG
 
     /* Run the multiplayer menu */
     int retval      = this->mpMenu->Run();
@@ -348,15 +338,13 @@ void Engine::setupMulti()
     else if(retval == host_id)    // Host
     {
         /* If the user wants to host a game,
-            * NPong will create a socket and accept
-            * a connection on the default port, 2012.
-            * The host controls ball movement and the
-            * score, the client only controls his or
-            * her own paddle.
-            */
-#ifdef _DEBUG
+         * NPong will create a socket and accept
+         * a connection on the default port, 2012.
+         * The host controls ball movement and the
+         * score, the client only controls his or
+         * her own paddle.
+         */
         LOG("Host", DEBUG);
-#endif // _DEBUG
 
         this->isHost = true;
         this->peer = new Socket(AF_INET, SOCK_STREAM, TCP_SERVER);
@@ -381,6 +369,8 @@ void Engine::setupMulti()
         accepting->addMenuOption("Awaiting an opponent...", BTN_TEXT, ACT_NONE);
         accepting->addMenuOption(" \n Return", BTN_ACTION, ACT_RETURN);
 
+        this->peer->setNonBlocking();
+
         while(!quit)
         {
             if(accepting->runNoBlock(5) == RETURN_ID)
@@ -389,75 +379,73 @@ void Engine::setupMulti()
             /* Await a connection. It is non-blocking so the
              * user can now safely exit.
              */
-            int opponent = this->peer->nonBlockAccept();
+            int opponent = this->peer->accept();
 
             if(opponent != -1)
-            {
                 break;
-            }
         }
 
         if(!quit)
         {
-#ifdef _DEBUG
             /* Log the socket file descriptor so it's not an error */
             logger << "Socket FD: " << this->peer->getClientSock();
             LOG(logger.str(), DEBUG);
             logger.str(string());
-#endif // _DEBUG
 
             /* Get the confirmation of connection message from the opponent */
             char* msg = NULL;
             do
             {
                 msg = this->peer->recv();
-#ifdef _DEBUG
                 LOG(msg, DEBUG);
-#endif // _DEBUG
-
             }
             while(strncmp(msg, "CONNECT\n", 8) != 0);
 
             /* Just show the user that someone is
-                * ready to play.
-                * TODO: Add a confirmation message so incase
-                * user is AFK they can be informed.
-                */
-
-#ifdef _DEBUG
+             * ready to play.
+             * TODO: Add a confirmation message so incase
+             * user is AFK they can be informed.
+             */
             LOG("Peer sent \"CONNECT\\n\" message!", DEBUG);
-#endif // _DEBUG
 
             /* We have received a connect message, so we can now play. */
             this->playMultiGame();
         }
-
     }
     else if(retval == enter_id)    // Join
     {
         /* Join a server that has been created on the LAN.
-            * Currently does not connect over the Internet.
-            * FIXME: Make NPong work over the Internet.
-            */
-#ifdef _DEBUG
+         * Currently does not connect over the Internet.
+         * FIXME: Make NPong work over the Internet.
+         * FIXME: Remove the delay when prompting.
+         */
+
         LOG("Join", DEBUG);
         LOG("Prompting for IP...", DEBUG);
-#endif // _DEBUG
 
         /* We want to join, not host */
         this->isHost = false;
 
         /* Instructions */
-        SDL_Surface* main_line = renderMultiLineText(this->score_font,
-            "Enter the server IP address:", createColor(BLACK), createColor(WHITE),
-            ALIGN_CENTER | CREATE_SURFACE | TRANSPARENT_BG);
+        Menu* prompt        = new Menu(this->display, this->eventHandler);
+        TTF_Font* menu_font = TTF_OpenFont("Data"FN_SLASH"MainFont.ttf", 24);
+
+        prompt->setBackground(this->bg);
+        prompt->setFont(menu_font);
+        prompt->setTextColor(WHITE);
+        prompt->setHighLightColor(GREEN);
+        prompt->setStartCoordinates(SCREEN_WIDTH / 2, 100);
+        prompt->setCenterText(true);
+
+        prompt->addMenuOption("Enter the server IP address: ", BTN_TEXT, ACT_NONE);
+        prompt->addMenuOption(" \n \n Return", BTN_ACTION, ACT_RETURN);
 
         /* Quitting var */
         bool quit = false;
 
         /* Surface to show what user types */
         SDL_Surface* ip_surf = renderMultiLineText(this->score_font,
-            " ", createColor(BLACK), createColor(WHITE),
+            "", createColor(BLACK), createColor(WHITE),
             ALIGN_CENTER | CREATE_SURFACE | TRANSPARENT_BG);
 
         SDL_Event evt;
@@ -468,6 +456,25 @@ void Engine::setupMulti()
 
         while(!quit)
         {
+            delete prompt;
+            prompt = new Menu(this->display, this->eventHandler);
+            prompt->setBackground(this->bg);
+            prompt->setFont(menu_font);
+            prompt->setTextColor(WHITE);
+            prompt->setHighLightColor(GREEN);
+            prompt->setStartCoordinates(SCREEN_WIDTH / 2, 100);
+            prompt->setCenterText(true);
+
+            prompt->addMenuOption("Enter the server IP address: ", BTN_TEXT, ACT_NONE);
+            prompt->addMenuOption(ip.c_str(), BTN_TEXT, ACT_NONE);
+            prompt->addMenuOption(" \n Return", BTN_ACTION, ACT_RETURN);
+
+            if(prompt->runNoBlock(1) == RETURN_ID)
+            {
+                ip.clear();
+                break;
+            }
+
             SDL_FreeSurface(ip_surf);
             ip_surf = renderMultiLineText(this->score_font, ip, 
                 createColor(BLACK), createColor(WHITE),
@@ -502,14 +509,6 @@ void Engine::setupMulti()
             {
                 break;
             }
-
-            /* Put all surfaces on the screen */
-            BLIT(this->bg, 0, 0);
-            BLIT(main_line, SCREEN_WIDTH / 2 - main_line->clip_rect.w / 2, 100);
-            BLIT(ip_surf, SCREEN_WIDTH / 2 - ip_surf->clip_rect.w / 2, 200);
-
-            /* Update everything for the user to see */
-            this->display->update();
         }
 
         /* Unicode isn't needed anymore */
@@ -523,11 +522,9 @@ void Engine::setupMulti()
             */
         if(ip != "" && !quit)
         {
-#ifdef _DEBUG
             logger << "The IP address is: " << ip;
             LOG(logger.str(), DEBUG);
             logger.str(string());
-#endif // __DEBUG
 
             this->peer = new Socket(AF_INET, SOCK_STREAM);
             this->peer->connect(ip.c_str(), DEF_PONG_PORT);
@@ -555,7 +552,7 @@ void Engine::setupMulti()
         scanMenu->addMenuOption("Return", BTN_ACTION, ACT_RETURN);
 
         stringstream ip;
-        int i = 63;
+        int i = 0;
         vector<string> online;
 
         while(!quit)
@@ -598,9 +595,6 @@ void Engine::setupMulti()
                     }
                     delete this->peer;
                     ip.str(string());
-                }
-                else
-                {
                 }
             }
         }
@@ -785,7 +779,7 @@ void Engine::sendPosition()
 
     ss << "\n";
 
-#ifdef _DEBUG
+
     /* Do some logging for debug purposes */
     logger << "Sent " << sizeof ss.str() << " bytes.";
     LOG(logger.str(), DEBUG);
@@ -793,7 +787,7 @@ void Engine::sendPosition()
     logger << "Sending coordinates: " << ss.str();
     LOG(logger.str(), DEBUG);
     logger.str(string());
-#endif // _DEBUG
+
 
     /* Send the complete message, in the format
      * X:x-coorY:y-coorP1SCORE:player1-score:P2SCORE:player2-scoreBALLX:ball-xBALLY:ball-y\n
@@ -815,12 +809,11 @@ void Engine::recvPosition(int* y)
         msg.find("X:") == -1)
         return;
 
-#ifdef _DEBUG
     /* Logging to debug easily */
     logger << "Received data from peer: " << msg;
     LOG(logger.str(), DEBUG);
     logger.str(string());
-#endif // _DEBUG
+
 
     /* All variables to parse:
      * paddle_x, paddle_y, ball_x,
@@ -855,23 +848,20 @@ void Engine::delayFps()
     /* Calculate frame rate and how much to pause in order
      * to keep a constant frame rate.
      */
-#ifdef _DEBUG
     logger << "Ticks: " << this->fps->getTicks();
     logger << " FPS: " << this->fps->FRAME_RATE;
     logger << " Calc: " << 1000 / this->fps->FRAME_RATE;
     LOG(logger.str(), DEBUG);
     logger.str(string());
-#endif // _DEBUG
+
 
     if(((unsigned)this->fps->getTicks() < 1000 / this->fps->FRAME_RATE))
     {
         int delay = (1000 / this->fps->FRAME_RATE) - this->fps->getTicks();
 
-#ifdef _DEBUG
         logger << "Delaying for " << delay << "ms";
         LOG(logger.str(), DEBUG);
         logger.str(string());
-#endif // _DEBUG
 
         SDL_Delay(delay);
     }
@@ -880,12 +870,12 @@ void Engine::delayFps()
 void Engine::calcMove(int* ai_dy, const int dx, const int dy)
 {
 	/*
-		*ai_dy = an int to move the paddle
-		x      = where the ball is (x)
-		y      = where the ball is (y)
-		dx     = rate at which ball is moving (x)
-		dy     = rate at which ball is moving (y)
-	*/
+	 * *ai_dy = an int to move the paddle
+	 * x      = where the ball is (x)
+	 * y      = where the ball is (y)
+	 * dx     = rate at which ball is moving (x)
+	 * dy     = rate at which ball is moving (y)
+	 */
 
     /* Temporary variables */
     int x             = this->ball->getX();
@@ -898,12 +888,12 @@ void Engine::calcMove(int* ai_dy, const int dx, const int dy)
      */
 	int tmp           = abs(impact_y);
 
-#ifdef _DEBUG
+
     /* Log to debug and inform */
     logger << "Estimated impact: " << impact_y;
     LOG(logger.str(), DEBUG);
     logger.str(string());
-#endif // _DEBUG
+
 
     /* If the ball is going away from the AI paddle,
      * we need to move back toward the middle for
